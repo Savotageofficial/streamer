@@ -265,7 +265,7 @@
         const searchInput = document.getElementById('streamSearch');
         const inputField = document.getElementById('userInput');
         const submitButton = document.getElementById('submitBtn');
-        
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         // Read the IMDb ID from the URL query string.
         const params = new URLSearchParams(window.location.search);
         const imdbId = params.get('id');
@@ -273,12 +273,11 @@
         // Accept IMDb IDs such as tt1234567.
         if (imdbId && /^tt\d+$/.test(imdbId)) {
             inputField.value = imdbId;
-
-            // Automatically load streams.
+            await wait(100); 
             submitButton.click();
         }
 
-        
+
         let allStreams = [];
         let activeHash = null;
         

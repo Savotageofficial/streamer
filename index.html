@@ -59,11 +59,6 @@
             aspect-ratio: 16 / 9;
             margin: 0 auto;
         }
-        #player {
-            width: 100%;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
 
         .sidebar {
             width: 380px;
@@ -73,6 +68,19 @@
             border-left: 1px solid #333;
         }
         .sidebar h3 { margin: 4px 4px 10px; font-size: 1em; color: #aaa; }
+
+        #streamSearch {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #222;
+            color: inherit;
+        }
 
         .stream {
             border: 1px solid #333;
@@ -112,11 +120,19 @@
 
         <aside class="sidebar">
             <h3 id="listHeader">Streams</h3>
+            <input type="search" id="streamSearch" placeholder="Filter: 4k, DV, atmos, source…" disabled>
             <div id="streamList"></div>
         </aside>
     </div>
 
     <script>
+        const searchInput = document.getElementById('streamSearch');
+        const inputField = document.getElementById('userInput');
+        const submitButton = document.getElementById('submitBtn');
+
+        let allStreams = [];
+        let activeHash = null;
+
         async function fetchStreams(url) {
             try {
                 const response = await fetch(url);
@@ -130,6 +146,8 @@
         }
 
         function playStream(stream, div) {
+            activeHash = stream.infoHash;   // FIX 2: remember what's playing
+
             document.querySelectorAll('.stream.active').forEach(el => el.classList.remove('active'));
             div.classList.add('active');
 
@@ -147,11 +165,17 @@
         function renderStreams(streams) {
             const list = document.getElementById('streamList');
             list.innerHTML = '';
-            document.getElementById('listHeader').textContent = `Streams (${streams.length})`;
+            document.getElementById('listHeader').textContent = `Streams (${streams.length}/${allStreams.length})`;
+
+            if (!streams.length) {
+                list.textContent = 'No matches';
+                return;
+            }
 
             for (const stream of streams) {
                 const div = document.createElement('div');
-                div.className = 'stream';
+                // FIX 1: moved inside the loop, replaces `div.className = 'stream'`
+                div.className = 'stream' + (stream.infoHash === activeHash ? ' active' : '');
 
                 const name = document.createElement('div');
                 name.className = 'name';
@@ -167,8 +191,16 @@
             }
         }
 
-        const inputField = document.getElementById('userInput');
-        const submitButton = document.getElementById('submitBtn');
+        function filterStreams() {
+            const terms = searchInput.value.toLowerCase().split(/\s+/).filter(Boolean);
+            const shown = allStreams.filter(s => {
+                const text = (s.name + ' ' + s.title).toLowerCase();
+                return terms.every(t => text.includes(t));
+            });
+            renderStreams(shown);
+        }
+
+        searchInput.addEventListener('input', filterStreams);
 
         submitButton.addEventListener('click', async function () {
             const id = inputField.value.trim();
@@ -178,7 +210,12 @@
                 document.getElementById('streamList').textContent = 'No streams found';
                 return;
             }
-            renderStreams(streams);
+
+            // FIX 3: store the full list and enable the search box
+            allStreams = streams;
+            searchInput.value = '';
+            searchInput.disabled = false;
+            renderStreams(allStreams);
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@webtor/embed-sdk-js/dist/index.min.js" charset="utf-8" async></script>

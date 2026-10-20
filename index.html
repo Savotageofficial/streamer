@@ -273,7 +273,6 @@
         // Accept IMDb IDs such as tt1234567.
         if (imdbId && /^tt\d+$/.test(imdbId)) {
             inputField.value = imdbId;
-            await wait(100); 
             submitButton.click();
         }
 

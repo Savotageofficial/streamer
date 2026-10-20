@@ -137,6 +137,81 @@
         .download:active {
             transform: scale(0.95);
         }
+        .topbar {
+            display: flex;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #1b1b1b;
+            border-bottom: 1px solid #333;
+            position: relative;
+            z-index: 10;
+        }
+
+        .movie-search {
+            position: relative;
+            flex: 1;
+            min-width: 180px;
+            max-width: 420px;
+        }
+
+        .movie-search input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #222;
+            color: #eee;
+        }
+
+        .movie-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #202020;
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 8px 20px #0008;
+            z-index: 100;
+        }
+
+        .movie-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+        }
+
+        .movie-option:last-child {
+            border-bottom: none;
+        }
+
+        .movie-option:hover {
+            background: #303030;
+        }
+
+        .movie-option .movie-title {
+            font-weight: 600;
+        }
+
+        .movie-option .movie-meta {
+            margin-top: 3px;
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        @media (max-width: 800px) {
+            .topbar {
+                flex-wrap: wrap;
+            }
+
+            .movie-search {
+                flex-basis: 100%;
+                max-width: none;
+            }
+        }
 
         /* Stack on small screens */
         @media (max-width: 800px) {
@@ -147,7 +222,22 @@
 </head>
 <body>
     <div class="topbar">
-        <input type="text" id="userInput" placeholder="Type IMDb ID here (e.g. tt1234567)">
+        <div class="movie-search">
+            <input
+                type="search"
+                id="movieSearch"
+                placeholder="Search movies & series..."
+                autocomplete="off"
+            >
+            <div id="movieDropdown" class="movie-dropdown"></div>
+        </div>
+
+        <input
+            type="text"
+            id="userInput"
+            placeholder="IMDb ID (e.g. tt1234567)"
+        >
+
         <button id="submitBtn">Load</button>
     </div>
 
@@ -181,6 +271,165 @@
         
 
         const downloadButton = document.querySelector('.download');
+        const movieSearch = document.getElementById('movieSearch');
+        const movieDropdown = document.getElementById('movieDropdown');
+
+        let searchTimeout;
+        let searchRequestId = 0;
+
+        movieSearch.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+
+            const query = movieSearch.value.trim();
+            const requestId = ++searchRequestId;
+
+            if (query.length < 2) {
+                movieDropdown.innerHTML = '';
+                movieDropdown.style.display = 'none';
+                return;
+            }
+
+            movieDropdown.innerHTML = `
+                <div class="movie-option">Searching...</div>
+            `;
+            movieDropdown.style.display = 'block';
+
+            // Wait until typing pauses before making a request.
+            searchTimeout = setTimeout(() => {
+                searchMovies(query, requestId);
+            }, 300);
+        });
+
+        
+        async function searchMovies(query, requestId) {
+            try {
+                const response = await fetch(
+                    `/api/search?q=${encodeURIComponent(query)}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Search failed: HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Ignore results from older searches.
+                if (requestId !== searchRequestId) return;
+
+                renderMovieResults(data.results || []);
+            } catch (error) {
+                if (requestId !== searchRequestId) return;
+
+                console.error('Movie search failed:', error);
+
+                movieDropdown.innerHTML = `
+                    <div class="movie-option">
+                        Search failed. Try again.
+                    </div>
+                `;
+
+                movieDropdown.style.display = 'block';
+            }
+        }
+
+
+        function renderMovieResults(results) {
+            movieDropdown.innerHTML = '';
+
+            if (!results.length) {
+                movieDropdown.innerHTML = `
+                    <div class="movie-option">No movies or series found.</div>
+                `;
+                movieDropdown.style.display = 'block';
+                return;
+            }
+
+            for (const item of results) {
+                const title = item.media_type === 'movie'
+                    ? item.title
+                    : item.name;
+
+                const date = item.media_type === 'movie'
+                    ? item.release_date
+                    : item.first_air_date;
+
+                const year = date ? date.slice(0, 4) : 'Year unknown';
+                const type = item.media_type === 'movie' ? 'Movie' : 'TV Series';
+
+                const option = document.createElement('div');
+                option.className = 'movie-option';
+
+                const titleElement = document.createElement('div');
+                titleElement.className = 'movie-title';
+                titleElement.textContent = title;
+
+                const metaElement = document.createElement('div');
+                metaElement.className = 'movie-meta';
+                metaElement.textContent = `${type} • ${year}`;
+
+                option.append(titleElement, metaElement);
+
+                option.addEventListener('click', () => {
+                    selectMovie(item, title);
+                });
+
+                movieDropdown.appendChild(option);
+            }
+
+            movieDropdown.style.display = 'block';
+        }
+        
+
+        
+        async function selectMovie(item, title) {
+            // Invalidate any pending search responses.
+            searchRequestId++;
+
+            movieSearch.value = title;
+            movieDropdown.style.display = 'none';
+            movieDropdown.innerHTML = '';
+
+            inputField.value = 'Looking up IMDb ID...';
+            inputField.disabled = true;
+
+            try {
+                const params = new URLSearchParams({
+                    id: String(item.id),
+                    type: item.media_type
+                });
+
+                const response = await fetch(`/api/imdb?${params}`);
+
+                if (!response.ok) {
+                    throw new Error(`IMDb lookup failed: HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (!data.imdb_id) {
+                    inputField.value = '';
+                    alert('No IMDb ID was found for this title.');
+                    return;
+                }
+
+                inputField.value = data.imdb_id;
+            } catch (error) {
+                console.error('Failed to retrieve IMDb ID:', error);
+
+                inputField.value = '';
+                alert('Could not retrieve the IMDb ID. Please try again.');
+            } finally {
+                inputField.disabled = false;
+            }
+        }
+
+
+        // Close the dropdown when clicking elsewhere.
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.movie-search')) {
+                movieDropdown.style.display = 'none';
+            }
+        });
 
         downloadButton.addEventListener('click', () => {
             if (!activeHash) return;

@@ -202,6 +202,39 @@
             font-size: 12px;
         }
 
+
+
+        .series-selectors {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .series-selectors select {
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #222;
+            color: #eee;
+            min-width: 100px;
+            max-width: 160px;
+        }
+
+        .series-selectors select:disabled {
+            opacity: 0.5;
+        }
+
+        @media (max-width: 800px) {
+            .series-selectors {
+                flex-basis: 100%;
+            }
+
+            .series-selectors select {
+                flex: 1;
+                max-width: none;
+            }
+        }
+
         @media (max-width: 800px) {
             .topbar {
                 flex-wrap: wrap;
@@ -230,6 +263,16 @@
                 autocomplete="off"
             >
             <div id="movieDropdown" class="movie-dropdown"></div>
+        </div>
+
+        <div id="seriesSelectors" class="series-selectors" style="display: none;">
+            <select id="seasonSelect" disabled>
+                <option value="">Season</option>
+            </select>
+
+            <select id="episodeSelect" disabled>
+                <option value="">Episode</option>
+            </select>
         </div>
 
         <input
@@ -286,6 +329,12 @@
         const downloadButton = document.querySelector('.download');
         const movieSearch = document.getElementById('movieSearch');
         const movieDropdown = document.getElementById('movieDropdown');
+        const seriesSelectors = document.getElementById('seriesSelectors');
+        const seasonSelect = document.getElementById('seasonSelect');
+        const episodeSelect = document.getElementById('episodeSelect');
+
+        let selectedMediaType = null;
+        let selectedTmdbId = null;
 
         let searchTimeout;
         let searchRequestId = 0;
@@ -312,6 +361,92 @@
                 searchMovies(query, requestId);
             }, 300);
         });
+
+
+
+
+        
+        async function loadSeasons(tmdbId) {
+            seasonSelect.innerHTML = '<option value="">Loading seasons...</option>';
+            episodeSelect.innerHTML = '<option value="">Select episode</option>';
+
+            seasonSelect.disabled = true;
+            episodeSelect.disabled = true;
+
+            try {
+                const response = await fetch(
+                    `/api/episodes?id=${encodeURIComponent(tmdbId)}`
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to load seasons');
+                }
+
+                const data = await response.json();
+
+                seasonSelect.innerHTML = '<option value="">Select season</option>';
+
+                for (const season of data.seasons || []) {
+                    const option = document.createElement('option');
+                    option.value = season.season_number;
+                    option.textContent =
+                        `${season.name || `Season ${season.season_number}`} (${season.episode_count} episodes)`;
+
+                    seasonSelect.appendChild(option);
+                }
+
+                seasonSelect.disabled = !data.seasons?.length;
+            } catch (error) {
+                console.error(error);
+                seasonSelect.innerHTML = '<option value="">Failed to load seasons</option>';
+            }
+        }
+
+        async function loadEpisodes(tmdbId, seasonNumber) {
+            episodeSelect.disabled = true;
+            episodeSelect.innerHTML = '<option value="">Loading episodes...</option>';
+
+            try {
+                const params = new URLSearchParams({
+                    id: String(tmdbId),
+                    season: String(seasonNumber)
+                });
+
+                const response = await fetch(`/api/episodes?${params}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load episodes');
+                }
+
+                const data = await response.json();
+
+                episodeSelect.innerHTML = '<option value="">Select episode</option>';
+
+                for (const episode of data.episodes || []) {
+                    const option = document.createElement('option');
+                    option.value = episode.episode_number;
+                    option.textContent =
+                        `Episode ${episode.episode_number} — ${episode.name || 'Untitled'}`;
+
+                    episodeSelect.appendChild(option);
+                }
+
+                episodeSelect.disabled = !data.episodes?.length;
+            } catch (error) {
+                console.error(error);
+                episodeSelect.innerHTML = '<option value="">Failed to load episodes</option>';
+            }
+        }
+
+        seasonSelect.addEventListener('change', () => {
+            episodeSelect.innerHTML = '<option value="">Select episode</option>';
+            episodeSelect.disabled = true;
+
+            if (selectedTmdbId && seasonSelect.value !== '') {
+                loadEpisodes(selectedTmdbId, seasonSelect.value);
+            }
+        });
+
 
         
         async function searchMovies(query, requestId) {
@@ -397,6 +532,23 @@
         async function selectMovie(item, title) {
             // Invalidate any pending search responses.
             searchRequestId++;
+
+
+            selectedMediaType = item.media_type;
+            selectedTmdbId = item.media_type === 'tv' ? item.id : null;
+
+            seriesSelectors.style.display =
+                item.media_type === 'tv' ? 'flex' : 'none';
+
+            seasonSelect.innerHTML = '<option value="">Select season</option>';
+            episodeSelect.innerHTML = '<option value="">Select episode</option>';
+
+            seasonSelect.disabled = true;
+            episodeSelect.disabled = true;
+
+            if (item.media_type === 'tv') {
+                loadSeasons(item.id);
+            }
 
             movieSearch.value = title;
             movieDropdown.style.display = 'none';
@@ -522,23 +674,52 @@
             renderStreams(shown);
         }
 
-        searchInput.addEventListener('input', filterStreams);
-
+        searchInput.addEventListener('input', filterStreams);        
         submitButton.addEventListener('click', async function () {
             const id = inputField.value.trim();
-            const streams = await fetchStreams(`https://torrentio.strem.fun/stream/movie/${id}.json`);
 
-            if (!streams.length) {
-                document.getElementById('streamList').textContent = 'No streams found';
+            if (!/^tt\d+$/.test(id)) {
+                alert('Please enter a valid IMDb ID or select a title.');
                 return;
             }
 
-            // FIX 3: store the full list and enable the search box
-            allStreams = streams;
-            searchInput.value = '';
-            searchInput.disabled = false;
-            renderStreams(allStreams);
+            let url;
+
+            if (selectedMediaType === 'tv') {
+                const season = seasonSelect.value;
+                const episode = episodeSelect.value;
+
+                if (season === '' || episode === '') {
+                    alert('Please select a season and episode.');
+                    return;
+                }
+
+                url = `https://torrentio.strem.fun/stream/series/${id}:${season}:${episode}.json`;
+            } else {
+                url = `https://torrentio.strem.fun/stream/movie/${id}.json`;
+            }
+
+            submitButton.disabled = true;
+
+            try {
+                const streams = await fetchStreams(url);
+
+                if (!streams.length) {
+                    allStreams = [];
+                    document.getElementById('streamList').textContent = 'No streams found';
+                    document.getElementById('listHeader').textContent = 'Streams (0)';
+                    return;
+                }
+
+                allStreams = streams;
+                searchInput.value = '';
+                searchInput.disabled = false;
+                renderStreams(allStreams);
+            } finally {
+                submitButton.disabled = false;
+            }
         });
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@webtor/embed-sdk-js/dist/index.min.js" charset="utf-8" async></script>
 </body>

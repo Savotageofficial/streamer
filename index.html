@@ -643,6 +643,7 @@
             window.webtor.push({
                 id: 'player',
                 magnet: `magnet:?xt=urn:btih:${stream.infoHash}&dn=${encodeURIComponent(homedir)}`,
+                pwd: `/${homedir}`,
                 file: stream.fileIdx,
                 lang: 'en',
                 width: '100%',

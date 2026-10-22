@@ -634,6 +634,10 @@
             window.webtor = window.webtor || [];
             const filename = stream.behaviorHints?.filename;
 
+            console.log('Requested episode file:', filename);
+            console.log('Torrent file index:', stream.fileIdx);
+            console.log('Torrent hash:', stream.infoHash);
+            
             window.webtor.push({
                 id: 'player',
                 magnet: `magnet:?xt=urn:btih:${stream.infoHash}`,

@@ -634,9 +634,11 @@
             window.webtor = window.webtor || [];
             const filename = stream.behaviorHints?.filename;
 
-            console.log(`${filename}`);
+            
             
             const homedir = stream.title.split('\n')[0];
+
+            console.log(`/${homedir}/${filename}`);
 
             window.webtor.push({
                 id: 'player',

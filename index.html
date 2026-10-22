@@ -638,7 +638,13 @@
             
             const homedir = stream.title.split('\n')[0];
 
-            console.log(`/${homedir}/${filename}`);
+            console.table({
+                hash: stream.infoHash,
+                title: stream.title.split('\n')[0],
+                filename: filename,
+                path: `/${homedir}/${filename}`,
+                fileIdx: stream.fileIdx
+            });
 
             window.webtor.push({
                 id: 'player',

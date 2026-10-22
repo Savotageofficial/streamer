@@ -635,11 +635,13 @@
             const filename = stream.behaviorHints?.filename;
 
             console.log(`${filename}`);
+            
+            const homedir = stream.title.split('\n')[0];
 
             window.webtor.push({
                 id: 'player',
                 magnet: `magnet:?xt=urn:btih:${stream.infoHash}`,
-                pwd: '/',
+                pwd: `/${homedir}`,
                 file: `${filename}`,
                 lang: 'en',
                 width: '100%',

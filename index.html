@@ -639,6 +639,7 @@
             const homedir = stream.title.split('\n')[0];
 
             const magnet = `magnet:?xt=urn:btih:${stream.infoHash}&dn=${encodeURIComponent(homedir)}`;
+            const path = `/${homedir}/${filename}`;
 
             const player = document.getElementById('player');
             player.innerHTML = '';

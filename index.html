@@ -648,7 +648,23 @@
                 width: '100%',
                 height: '100%',
                 on: function (event) {
-                    console.log("[Webtor Event]", event);
+                    console.log("[Webtor Event]", event.name, event.data);
+
+                    if (event.name === "torrent error") {
+                        console.error("[Webtor Torrent Error]", event.data);
+                    }
+
+                    if (event.name === "torrent fetched") {
+                        console.log("[Webtor Torrent Fetched]", event.data);
+                    }
+
+                    if (event.name === "open") {
+                        console.log("[Webtor File Opened]", event.data);
+                    }
+
+                    if (event.name === "inited") {
+                        console.log("[Webtor Player Initialized]", event.data);
+                    }
                 }
             });
         }

@@ -287,6 +287,13 @@
     <div class="layout">
         <div class="main">
             <div id="player" class="webtor"></div>
+            <div id="seriesUnsupported" style="display: none; text-align: center; padding: 30px;">
+                <h2>Series Not Supported</h2>
+                <p>
+                    Series are not supported for streaming here yet.
+                    Click the download button to stream and download this episode.
+                </p>
+            </div>
             <div class="download-container">
             <div></div>
             <button class="download">
@@ -627,10 +634,27 @@
             document.querySelectorAll('.stream.active')
                 .forEach(el => el.classList.remove('active'));
 
+
             div.classList.add('active');
 
-            document.getElementById('player').innerHTML = '';
 
+            const player = document.getElementById('player');
+            const seriesUnsupported = document.getElementById('seriesUnsupported');
+
+            player.innerHTML = '';
+
+
+            if (selectedMediaType === 'tv') {
+                player.style.display = 'none';
+                seriesUnsupported.style.display = 'block';
+                return;
+            } else {
+                // Restore the normal movie player.
+                seriesUnsupported.style.display = 'none';
+                player.style.display = '';
+            }
+
+            
             window.webtor = window.webtor || [];
             const filename = stream.behaviorHints?.filename;
 

@@ -620,17 +620,22 @@
 
         function playStream(stream, div) {
             console.log("Selected stream:", stream);
-            activeHash = stream.infoHash;   // FIX 2: remember what's playing
+
+            activeHash = stream.infoHash;
             downloadButton.style.display = 'flex';
 
-            document.querySelectorAll('.stream.active').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.stream.active')
+                .forEach(el => el.classList.remove('active'));
+
             div.classList.add('active');
 
             document.getElementById('player').innerHTML = '';
+
             window.webtor = window.webtor || [];
+
             window.webtor.push({
                 id: 'player',
-                magnet: `magnet:?xt=urn:btih:${stream.infoHash}&index=${stream.fileIdx}`,
+                magnet: `magnet:?xt=urn:btih:${stream.infoHash}`,
                 path: stream.behaviorHints?.filename,
                 lang: 'en',
                 width: '100%',

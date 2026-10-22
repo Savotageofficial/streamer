@@ -619,6 +619,7 @@
         }
 
         function playStream(stream, div) {
+            console.log("Selected stream:", stream);
             activeHash = stream.infoHash;   // FIX 2: remember what's playing
             downloadButton.style.display = 'flex';
 

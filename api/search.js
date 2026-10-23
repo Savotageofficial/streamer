@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
 
     try {
         const url = new URL(
-            'https://api.themoviedb.org/3/search/multi'
+            'https://api.themoviedb.org/3/search/movie'
         );
 
         url.searchParams.set('api_key', apiKey);

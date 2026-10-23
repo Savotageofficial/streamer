@@ -45,12 +45,7 @@ module.exports = async (req, res) => {
 
         const data = await response.json();
 
-        const results = (data.results || [])
-            .filter(item =>
-                item.media_type === 'movie' ||
-                item.media_type === 'tv'
-            )
-            .slice(0, 10);
+        const results = (data.results || []).slice(0, 10);
 
         res.setHeader('Cache-Control', 'public, max-age=30');
 
